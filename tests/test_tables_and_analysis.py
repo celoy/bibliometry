@@ -154,3 +154,26 @@ def test_conflated_profiles_and_unassigned_authorships(project):
     assert works.loc["W11", "roster_people"] == ""
     links = tables["authorships"].set_index("work_id").person_link
     assert links["W8"] == "profile" and links["W10"] == "name"
+
+
+def test_single_person_mode(tmp_path):
+    from conftest import HOME_RECORD
+
+    from bibliometry import pipeline
+    from bibliometry.openalex import institution_works_filter
+    from bibliometry.roster import single_person_roster
+
+    roster = single_person_roster("Ana Souza", "https://orcid.org/0000-0002-1825-0097")
+    assert roster.person_id.tolist() == ["souza--ana"]
+    assert roster.orcid.iloc[0] == "0000-0002-1825-0097"
+    assert "raw_author_name.search:Souza" in institution_works_filter("I1", "a", "b", "Souza")
+
+    (tmp_path / ".env").write_text("OPENALEX_API_KEY=k-123\n")
+    config = pipeline.person_config(tmp_path, "a@b.org", HOME_RECORD, "Souza, Ana")
+    assert config.root == tmp_path / "people" / "souza--ana"
+    assert config.single_person and config.from_date == "1900-01-01"
+    config.validate()  # no roster file needed
+    loaded = Config.load(config.root / "config.yaml")
+    assert loaded.cache_path == (tmp_path / "cache").resolve()
+    assert loaded.api_key() == "k-123"  # found in a parent folder
+    assert pipeline.load_roster(loaded).person_id.tolist() == ["souza--ana"]

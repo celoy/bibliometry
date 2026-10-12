@@ -53,6 +53,18 @@ To use your own list of people, either:
 - paste a link (a Google Sheets *share* link works);
 - tick *upload from my computer*.
 
+### Just one person
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/celoy/bibliometry/blob/main/notebooks/colab_one_person.ipynb)
+
+`notebooks/colab_one_person.ipynb` needs no file: you enter a **name** (optionally an ORCID) and an institution. It covers **all years** by default, and reports:
+
+- the person's publications signed with the institution, with every OpenAlex field;
+- their top 10% / 1% most-cited shares and the top-1% papers;
+- the journals used, with their world rank in their subfield.
+
+Each person gets their own folder (`My Drive/bibliometry/people/<name>/`). Only the publications OpenAlex attributes to that person under that institution are downloaded, so it stays fast even for a large university. Locally, set `roster.person` (and optionally `roster.person_orcid`) in `config.yaml` instead of `roster.path`.
+
 ### Option 2 — on your computer
 
 You need Python 3.10 or newer.

@@ -56,16 +56,22 @@ def harvest_institution(
     manifest: Manifest,
     refresh: bool = False,
     progress: Callable[[str], None] | None = None,
+    author_name: str = "",
 ) -> HarvestStats:
-    """Fetch every work of the institution in ``[from_date, to_date]`` into ``store``."""
+    """Fetch every work of the institution in ``[from_date, to_date]`` into ``store``.
+
+    With ``author_name``, only works with an author of that name (single-person mode).
+    """
     say = progress or (lambda _msg: None)
-    key = f"institution:{institution_id}:{from_date}:{to_date}"
+    key = f"institution:{institution_id}:{from_date}:{to_date}" + (
+        f":{author_name}" if author_name else ""
+    )
     if manifest.is_done(key) and not refresh:
         return HarvestStats(skipped=True)
 
     stats = HarvestStats()
     before = client.n_requests
-    filter_string = institution_works_filter(institution_id, from_date, to_date)
+    filter_string = institution_works_filter(institution_id, from_date, to_date, author_name)
     stats.expected = client.count("/works", filter_string)
     n_pages = -(-stats.expected // MAX_PER_PAGE)
     say(f"{stats.expected} works to fetch ({n_pages} pages)…")

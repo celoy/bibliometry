@@ -359,6 +359,28 @@ def read_roster(
     return roster
 
 
+def single_person_roster(name: str, orcid: str = "") -> pd.DataFrame:
+    """A one-row roster for single-person mode (``"First Last"`` or ``"Last, First"``)."""
+    last, first = split_full_name(name)
+    if not last:
+        raise RosterError("Enter the person's name, e.g. 'Ada Lovelace' or 'Lovelace, Ada'.")
+    roster = pd.DataFrame(
+        {
+            "person_id": [person_id(last, first)],
+            "last_name": [last],
+            "first_name": [first],
+            "orcid": [normalise_orcid(orcid)],
+            "openalex_ids": [""],
+            "lab": [""],
+            "email": [""],
+            "sheet": ["single person"],
+            "source_row": [1],
+        }
+    )
+    roster.attrs["merged"] = []
+    return roster
+
+
 def summarise_roster(roster: pd.DataFrame) -> pd.DataFrame:
     """Per-sheet counts of people and of the identifiers that make matching reliable."""
     return roster.groupby("sheet", sort=False).agg(

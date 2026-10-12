@@ -50,6 +50,10 @@ class RosterSettings:
     columns: dict[str, str] = field(default_factory=dict)
     #: Lab names to unify, {name in the file: name to use}, e.g. {"Old Lab Name": "New Lab Name"}.
     lab_aliases: dict[str, str] = field(default_factory=dict)
+    #: Single-person mode: a name ("First Last" or "Last, First") instead of a file.
+    person: str = ""
+    #: Optional ORCID of that person, for a reliable match.
+    person_orcid: str = ""
 
 
 @dataclass
@@ -60,6 +64,9 @@ class Config:
     from_date: str = ""
     to_date: str = ""
     data_dir: str = "data"
+    #: Where venue records and the world journal reference are cached; shared between
+    #: runs (e.g. one per person). Empty = ``<data_dir>/raw``.
+    cache_dir: str = ""
     #: Directory the config file lives in; relative paths resolve against it.
     root: Path = field(default=Path("."), repr=False, compare=False)
 
@@ -85,6 +92,10 @@ class Config:
         return self.data_path / "exports"
 
     @property
+    def cache_path(self) -> Path:
+        return (self.root / self.cache_dir).resolve() if self.cache_dir else self.raw_dir
+
+    @property
     def institution_store(self) -> Path:
         return self.raw_dir / "institution_works.jsonl.gz"
 
@@ -103,6 +114,11 @@ class Config:
     @property
     def matches_review(self) -> Path:
         return self.review_dir / "author_matches.csv"
+
+    @property
+    def single_person(self) -> bool:
+        """True when the config names one person instead of a roster file."""
+        return bool(self.roster.person.strip())
 
     def roster_source(self) -> str:
         """Roster location, resolved against the config directory when it is a local path."""
@@ -130,7 +146,7 @@ class Config:
                 problems.append("from_date is after to_date.")
         except (TypeError, ValueError):
             problems.append("from_date / to_date: use the YYYY-MM-DD format.")
-        if need_roster:
+        if need_roster and not self.single_person:
             source = self.roster_source()
             if not source:
                 problems.append("roster.path: give the path or URL of the CSV/XLSX list of people.")
@@ -170,7 +186,7 @@ class Config:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any], root: Path = Path(".")) -> Config:
-        known = {"mailto", "institution", "roster", "from_date", "to_date", "data_dir"}
+        known = {"mailto", "institution", "roster", "from_date", "to_date", "data_dir", "cache_dir"}
         unknown = set(raw) - known
         if unknown:
             raise ConfigError(f"Unknown key(s) in config: {', '.join(sorted(unknown))}")
@@ -187,6 +203,7 @@ class Config:
             from_date=str(raw.get("from_date") or ""),
             to_date=str(raw.get("to_date") or ""),
             data_dir=str(raw.get("data_dir") or "data"),
+            cache_dir=str(raw.get("cache_dir") or ""),
             root=root,
         )
 
@@ -209,16 +226,22 @@ def _colab_secret() -> str:
 
 
 def load_api_key(root: Path = Path(".")) -> str:
-    """The OpenAlex API key: environment, then Colab Secrets, then ``root/.env``."""
+    """The OpenAlex API key: environment, then Colab Secrets, then ``.env``.
+
+    ``.env`` is looked for in ``root`` and up to three parent folders, so a run in a
+    sub-folder (single-person mode: ``people/<name>/``) finds the project's key.
+    """
     value = os.environ.get(API_KEY_VAR, "").strip() or _colab_secret()
     if value:
         return value
-    env_file = Path(root) / ENV_FILE
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            key, _, val = line.partition("=")
-            if key.strip() == API_KEY_VAR:
-                return val.strip().strip("'\"")
+    folder = Path(root).resolve()
+    for candidate in [folder, *folder.parents[:3]]:
+        env_file = candidate / ENV_FILE
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                key, _, val = line.partition("=")
+                if key.strip() == API_KEY_VAR:
+                    return val.strip().strip("'\"")
     return ""
 
 

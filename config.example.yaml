@@ -27,6 +27,9 @@ roster:
   # Lab names to unify: {name in the file: name to use}.
   lab_aliases:
     Old Lab Name: New Lab Name
+  # Single-person mode: a name instead of a file (path is then ignored).
+  # person: Ada Lovelace
+  # person_orcid: 0000-0002-1825-0097
 
 # Publication period, inclusive.
 from_date: '2020-01-01'
@@ -34,3 +37,6 @@ to_date: '2024-12-31'
 
 # Where downloads, tables and exports go (relative to this file).
 data_dir: data
+# Where venue records and the world journal reference are cached (relative to this
+# file); share it between runs to download them once. Empty = data/raw.
+cache_dir: ''

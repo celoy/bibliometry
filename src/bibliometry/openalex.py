@@ -64,15 +64,20 @@ def date_window(from_date: str, to_date: str) -> list[str]:
     return [f"from_publication_date:{from_date}", f"to_publication_date:{to_date}"]
 
 
-def institution_works_filter(institution_id: str, from_date: str, to_date: str) -> str:
+def institution_works_filter(
+    institution_id: str, from_date: str, to_date: str, author_name: str = ""
+) -> str:
     """Works with at least one authorship affiliated to the institution or a child of it.
 
     ``lineage`` rather than ``id`` so that an institution's sub-units, when OpenAlex
-    records them as children, are counted too.
+    records them as children, are counted too. ``author_name`` further restricts to works
+    with an author of that name (single-person mode), which keeps an all-years query on a
+    large university small.
     """
-    return ",".join(
-        [f"authorships.institutions.lineage:{institution_id}", *date_window(from_date, to_date)]
-    )
+    clauses = [f"authorships.institutions.lineage:{institution_id}"]
+    if author_name:
+        clauses.append(f"raw_author_name.search:{author_name}")
+    return ",".join([*clauses, *date_window(from_date, to_date)])
 
 
 def author_works_filter(author_ids: list[str], from_date: str, to_date: str) -> str:

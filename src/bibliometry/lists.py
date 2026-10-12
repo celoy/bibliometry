@@ -83,11 +83,15 @@ def full_records(config: Config, work_ids: set[str]) -> pd.DataFrame:
     return frame.drop(columns=["id", *redundant], errors="ignore")
 
 
-def build_lists(config: Config, works: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    """``{list name: full-record table}`` for the two lists."""
+def build_lists(
+    config: Config, works: pd.DataFrame, names: list[str] | None = None
+) -> dict[str, pd.DataFrame]:
+    """``{list name: full-record table}`` for the lists in ``names`` (default: both)."""
     out = {}
     flags = works[FLAG_COLUMNS]
     for name, column in LISTS.items():
+        if names is not None and name not in names:
+            continue
         ids = set(works.loc[works[column], "work_id"])
         full = full_records(config, ids)
         merged = flags[flags.work_id.isin(ids)].merge(full, on="work_id", how="left")

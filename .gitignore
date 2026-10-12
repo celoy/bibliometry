@@ -1,5 +1,7 @@
 # Personal data and harvested corpora never go to git.
 data/
+people/
+cache/
 config.yaml
 .env
 *.xlsx

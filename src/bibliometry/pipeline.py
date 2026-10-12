@@ -15,6 +15,7 @@ matching step keeps the verdicts already typed into the review file.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -24,7 +25,7 @@ from .config import Config, ConfigError, InstitutionSettings, RosterSettings
 from .harvest import HarvestStats, harvest_institution, harvest_people
 from .institution import AffiliationMatcher, build_affiliation_pattern
 from .openalex import OpenAlexClient, short_id
-from .roster import read_roster
+from .roster import read_roster, single_person_roster
 from .store import Manifest, WorksStore
 from .tables import build_tables, excel_safe, export_excel, write_tables
 
@@ -45,7 +46,12 @@ def people_path(config: Config) -> Path:
 
 
 def load_roster(config: Config) -> pd.DataFrame:
-    """Read the roster named in the config and save its tidy form."""
+    """Read the roster named in the config (or the single person) and save its tidy form."""
+    if config.single_person:
+        roster = single_person_roster(config.roster.person, config.roster.person_orcid)
+        config.review_dir.mkdir(parents=True, exist_ok=True)
+        roster.to_csv(config.roster_table, index=False, encoding="utf-8-sig")
+        return roster
     roster = read_roster(
         config.roster_source(),
         config.roster.sheets,
@@ -72,6 +78,9 @@ def harvest_institution_step(
         Manifest(config.manifest_path),
         refresh=refresh,
         progress=progress,
+        author_name=single_person_roster(config.roster.person).last_name.iloc[0]
+        if config.single_person
+        else "",
     )
 
 
@@ -235,22 +244,32 @@ def lists_step(
     from . import analysis, lists, venues
 
     works = pd.read_parquet(config.tables_dir / "works.parquet")
-    progress("Building the two lists with all OpenAlex fields…")
-    publication_lists = lists.build_lists(config, works)
+    # Single-person mode: the "institution" download is restricted to the person's
+    # surname, so list 1 would mean nothing; list 2 is the person's signed output and
+    # also serves as the reference set for the local venue ranking.
+    names = ["list2_roster"] if config.single_person else None
+    main_list = "in_list_roster" if config.single_person else "in_list_institution"
+    progress("Building the publication list(s) with all OpenAlex fields…")
+    publication_lists = lists.build_lists(config, works, names)
     sources = venues.fetch_sources(
         client,
-        works.loc[works.in_list_institution, "venue_id"].dropna(),
-        WorksStore(config.raw_dir / "sources.jsonl.gz"),
+        works.loc[works[main_list], "venue_id"].dropna(),
+        WorksStore(config.cache_path / "sources.jsonl.gz"),
         progress,
     )
-    venue_table = venues.flag_top(venues.venue_table(sources, works))
-    world_store = WorksStore(config.raw_dir / "world_journals.jsonl.gz")
+    venue_table = venues.flag_top(
+        venues.venue_table(sources, works),
+        reference="works_list2" if config.single_person else "works_list1",
+    )
+    world_store = WorksStore(config.cache_path / "world_journals.jsonl.gz")
     if client is not None:
         world = venues.fetch_world_journals(
             client,
             world_store,
-            Manifest(config.manifest_path),
-            active_since=int(config.to_date[:4]) - 1,
+            Manifest(config.cache_path / "manifest.json"),
+            # Venue metrics are current values, so the reference is today's journals,
+            # whatever the study period: one cached download serves every run.
+            active_since=date.today().year - 2,
             progress=progress,
         )
     else:
@@ -259,7 +278,12 @@ def lists_step(
         venue_table = venues.world_percentiles(venue_table, world)
     venue_table = venues.ordered(venue_table)
     authorships = pd.read_parquet(config.tables_dir / "authorships.parquet")
-    report = analysis.indicator_report(works, venue_table, authorships)
+    report = analysis.indicator_report(
+        works,
+        venue_table,
+        authorships,
+        {"list2_roster": "in_list_roster"} if config.single_person else None,
+    )
 
     out = lists_dir(config)
     lists.write_lists(publication_lists, out)
@@ -276,3 +300,30 @@ def lists_step(
         progress(f"{name}: {len(frame):,} works, {frame.shape[1]} columns")
     progress(f"{venue_table.attrs['n_ranked']} journals ranked; written to {out}")
     return {**publication_lists, "venues": venue_table, **report}
+
+
+def person_config(
+    base: Path,
+    mailto: str,
+    institution_record: dict,
+    name: str,
+    orcid: str = "",
+    from_date: str = "1900-01-01",
+    to_date: str | None = None,
+) -> Config:
+    """Config for single-person mode, in its own folder ``base/people/<person_id>/``.
+
+    The venue and world-journal caches are shared in ``base/cache`` so that a second
+    person does not download them again. Defaults cover all years up to today.
+    """
+    roster = single_person_roster(name, orcid)
+    root = Path(base) / "people" / roster.person_id.iloc[0]
+    root.mkdir(parents=True, exist_ok=True)
+    config = new_config(
+        mailto, institution_record, "", from_date, to_date or date.today().isoformat(), root
+    )
+    config.roster.person = name.strip()
+    config.roster.person_orcid = roster.orcid.iloc[0]
+    config.cache_dir = "../../cache"
+    config.save(root / "config.yaml")
+    return config

@@ -121,6 +121,8 @@ The first columns are computed by this toolkit:
 | `venue_found_in` | `primary` = OpenAlex's primary location; `other location` = the primary location was a repository deposit, and a journal or conference was found among the other locations |
 | `abstract` | plain-text abstract. It replaces OpenAlex's `abstract_inverted_index`, which is not included. |
 
+In single-person mode (`roster.person`), only list 2 is produced (the person's publications signed with the institution), and the local venue ranking uses list 2 as its reference.
+
 Every other column is a field of the OpenAlex work record, with the same name. Nested fields are joined with dots (`primary_location.source.display_name`), and fields holding lists are kept as JSON text (`authorships`, `topics`, `locations`, …). The full reference is the [OpenAlex work object](https://docs.openalex.org/api-entities/works/work-object). The most useful ones:
 
 | Group | Columns |
@@ -230,7 +232,7 @@ One row per venue (journal, conference, book series, repository…) used by the 
 | `world_threshold_2yr_mean_citedness` | the value needed to be in that world top 10% |
 | `world_n` | number of reference journals in the subfield. The world flags are empty below 20. |
 
-The world reference is every journal in OpenAlex with at least 100 works that published in the year before the period's end or later. It is downloaded once (~70,000 journals).
+The world reference is every journal in OpenAlex with at least 100 works that published in the last two calendar years. OpenAlex's venue metrics are current values, not values for the study period, so the reference is today's journals whatever the period. It is downloaded once (~70,000 journals) and cached in `cache_dir`.
 
 **Secondary metrics:** `h_index` (the venue's h-index) and `i10_index` (number of its papers with ≥ 10 citations). Both grow with a journal's size and age, so they reflect volume as much as impact. Each comes with the same columns as the headline metric:
 

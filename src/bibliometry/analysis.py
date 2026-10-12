@@ -426,7 +426,10 @@ def venue_indicators(works: pd.DataFrame, venues: pd.DataFrame) -> pd.DataFrame:
 
 
 def indicator_report(
-    works: pd.DataFrame, venues: pd.DataFrame, authorships: pd.DataFrame | None = None
+    works: pd.DataFrame,
+    venues: pd.DataFrame,
+    authorships: pd.DataFrame | None = None,
+    lists: dict[str, str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Both lists × two scopes: every work, and research outputs deduplicated.
 
@@ -434,7 +437,7 @@ def indicator_report(
     when ``authorships`` is given, ``top1_papers_list1`` / ``top1_papers_list2``: the
     world top-1% papers of each list (research outputs, deduplicated) with authors.
     """
-    lists = {"list1_institution": "in_list_institution", "list2_roster": "in_list_roster"}
+    lists = lists or {"list1_institution": "in_list_institution", "list2_roster": "in_list_roster"}
     cited, venue_rows, papers = [], {}, {}
     for name, column in lists.items():
         selected = works[works[column]]
