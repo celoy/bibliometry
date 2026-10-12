@@ -51,8 +51,6 @@ def _flatten(record: dict[str, Any]) -> dict[str, Any]:
 
     def walk(prefix: str, value: Any) -> None:
         if isinstance(value, dict):
-            if not value:
-                out[prefix] = None
             for key, item in value.items():
                 walk(f"{prefix}.{key}" if prefix else key, item)
         elif isinstance(value, list):
@@ -75,7 +73,14 @@ def full_records(config: Config, work_ids: set[str]) -> pd.DataFrame:
         record.pop("abstract_inverted_index", None)  # replaced by the plain abstract
         rows.append({"work_id": work_id, **_flatten(record)})
     frame = pd.DataFrame(rows)
-    return frame.drop(columns=["id"], errors="ignore")
+    # A field that is null in some records and an object in others yields both "x"
+    # (always empty) and "x.y" columns; keep only the dotted ones.
+    redundant = [
+        c
+        for c in frame.columns
+        if frame[c].isna().all() and any(other.startswith(f"{c}.") for other in frame.columns)
+    ]
+    return frame.drop(columns=["id", *redundant], errors="ignore")
 
 
 def build_lists(config: Config, works: pd.DataFrame) -> dict[str, pd.DataFrame]:

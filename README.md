@@ -89,7 +89,7 @@ The list can be a CSV or Excel file (all sheets are read), a link to one, or a G
   - the lab (`Lab`, `Unit`, `Laboratory`, `Laboratoire`);
   - an `OpenAlex` column, if you already know someone's author ID.
 
-Other columns, such as rank or status, are kept as they are, so you can use them in the analysis. Headers are recognised in English and French. In any other language, or if a column is not recognised, rename it, or map it under `roster.columns` in `config.yaml`. A lab written two ways, such as an old and a new name, can be unified with `roster.lab_aliases`. See `examples/roster_template.csv` and `config.example.yaml`.
+Other columns, such as rank or status, are kept as they are, so you can use them in the analysis. Headers are recognised in English and French. In any other language, or if a column is not recognised, rename it, or map it under `roster.columns` in `config.yaml`. A lab written two ways, such as an old and a new name, can be unified with `roster.lab_aliases`. See `examples/roster_template.csv` and `config.example.yaml`. Every recognised header is listed in [docs/columns.md](docs/columns.md#1-the-list-of-people-input).
 
 ## How people are matched to OpenAlex profiles
 
@@ -153,6 +153,8 @@ Both are written with **every OpenAlex field**: nested fields become dotted colu
   - A journal's main subfield is the one holding most of its works. Journals spanning several domains (Scientific Reports, PLOS ONE, Nature…) are marked `broad_scope`, because their subfield is somewhat arbitrary.
 
 ## What you get
+
+Every column of every output file is described in **[docs/columns.md](docs/columns.md)**.
 
 ```
 data/

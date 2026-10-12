@@ -167,3 +167,40 @@ def test_top_papers_lists_authors_with_marks(built):
     papers = A.top_papers(works, authorships)
     assert papers.work_id.tolist() == ["W2"]
     assert papers.authors.iloc[0] == "A. Souza* [souza--ana]; Pierre Martin*"
+
+
+def test_every_output_column_is_documented(built):
+    """docs/columns.md must mention every column the toolkit itself creates."""
+    from pathlib import Path
+
+    doc = (Path(__file__).parents[1] / "docs" / "columns.md").read_text(encoding="utf-8")
+    config, works = built
+    tables = build_tables(config, None)
+    world = pd.DataFrame(
+        {"subfield_id": ["1"] * 25, "2yr_mean_citedness": 1.0, "h_index": 1, "i10_index": 1}
+    )
+    source = {
+        "id": "https://openalex.org/S1",
+        "type": "journal",
+        "summary_stats": {"2yr_mean_citedness": 1, "h_index": 1, "i10_index": 1},
+        "topics": [_topic(1, "F", "D", 1)],
+    }
+    venues = V.ordered(V.world_percentiles(V.flag_top(V.venue_table([source], works)), world))
+    lists = build_lists(config, works)["list1_institution"]
+    from bibliometry.lists import FLAG_COLUMNS
+
+    columns = {
+        *tables["works"].columns,
+        *tables["authorships"].columns,
+        *tables["topics"].columns,
+        *tables["keywords"].columns,
+        *tables["funders"].columns,
+        *tables["awards"].columns,
+        *tables["counts_by_year"].columns,
+        *tables["references"].columns,
+        *venues.columns,
+        *FLAG_COLUMNS,
+    }
+    assert lists.columns[0] == "work_id"
+    missing = sorted(c for c in columns if f"`{c}`" not in doc and c not in doc)
+    assert not missing, f"undocumented columns: {missing}"
