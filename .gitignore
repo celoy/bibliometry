@@ -1,0 +1,17 @@
+# Personal data and harvested corpora never go to git.
+data/
+config.yaml
+.env
+*.xlsx
+*.xls
+!examples/*.xlsx
+~$*
+
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.DS_Store

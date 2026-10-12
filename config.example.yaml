@@ -1,0 +1,36 @@
+# bibliometry run configuration.
+# Usually written by the setup notebook; to edit by hand, copy this file to
+# config.yaml. The OpenAlex API key is NOT stored here: put it in a file named .env
+# next to config.yaml, as   OPENALEX_API_KEY=your-key   (or use the setup notebook).
+
+# Your email: OpenAlex asks callers to identify themselves.
+mailto: someone@example.org
+
+institution:
+  # OpenAlex institution id (search it in the setup notebook, or on https://openalex.org).
+  id: I123456789
+  name: Example University
+  ror: https://ror.org/000000000
+  # Regex over raw affiliation strings (lower-case, accents removed), for authors whose
+  # institution OpenAlex did not recognise. Filled in automatically from OpenAlex's
+  # name variants; add a local abbreviation here if your colleagues use one.
+  affiliation_pattern: example\s*university\b|university\s*of\s*example\b
+
+roster:
+  # Path (relative to this file) or URL of a CSV/XLSX list of people.
+  path: data/input/people.xlsx
+  # Sheets to read; empty list = all sheets.
+  sheets: []
+  # Only if a column is not recognised: {canonical name: header in your file}.
+  # Canonical names: last_name, first_name, full_name, orcid, openalex_id, lab, email.
+  columns: {}
+  # Lab names to unify: {name in the file: name to use}.
+  lab_aliases:
+    Old Lab Name: New Lab Name
+
+# Publication period, inclusive.
+from_date: '2020-01-01'
+to_date: '2024-12-31'
+
+# Where downloads, tables and exports go (relative to this file).
+data_dir: data
