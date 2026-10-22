@@ -7,7 +7,9 @@ This file describes:
 3. the two publication lists;
 4. the analysis tables;
 5. the venue table;
-6. the indicators workbook.
+6. the indicators workbook;
+7. the quick-look workbook;
+8. the publications of each person.
 
 Paths are relative to the project folder (`My Drive/bibliometry` on Colab).
 
@@ -274,3 +276,54 @@ This workbook gives a summary for spreadsheet users. Its sheets:
 - `authorships` (only rows for people of your list or for authors signing with the institution);
 - `topics`;
 - `funders`.
+
+---
+
+## 8. Publications of each person: `data/lists/publications_by_person.xlsx`
+
+This workbook answers "what did each person of the list publish as a member of the institution?". It holds one short reference per publication, without abstracts or keywords.
+
+**What is included.** For each person, the publications where *that person* signed with the institution. Left out:
+
+- papers by other signers of the institution, e.g. staff of a partner university in a joint lab: they are in list 1 but not here;
+- the person's papers signed elsewhere (counted in `signed_elsewhere`).
+
+Every OpenAlex type is kept: articles, conference papers (proceedings), preprints, books, chapters, theses, reports, datasets… `type` says which. Two exceptions are dropped: `paratext` (covers, tables of contents) and `peer-review` (published referee reports). A paper and its preprint or HAL/arXiv copy with the same title are listed once, keeping the published version. A preprint with no published version stays.
+
+A paper signed by two people of the list appears under each of them (`co_listed`), so do not add up the people to count the institution's output: use list 2 for that.
+
+Sheets: `README`; `summary` (one row per person); `all` (every (person, publication) pair, to filter by person or year); then one sheet per person with at least one publication, named by `person_id`, most recent first. `publications_by_person.parquet` holds the `all` sheet.
+
+**Sheets `all` and `<person_id>`** (the per-person sheets have the columns from `publication_year` to `reference`):
+
+| Column | Meaning |
+|---|---|
+| `person_id`, `last_name`, `first_name`, `lab` | the person, as in `people.csv` |
+| `publication_year` | |
+| `authors` | authors in order, as named by OpenAlex; beyond 10 the list ends with "et al. (n authors)" |
+| `title` | |
+| `journal` | the venue (journal, conference, book series…; see §5). A HAL/arXiv deposit is replaced by the journal when OpenAlex knows both. |
+| `volume`, `issue` | |
+| `pages` | `first–last`, or the article number alone |
+| `doi` | DOI without prefix |
+| `type` | OpenAlex work type |
+| `co_listed` | other people of the list who signed this paper with the institution |
+| `reference` | the reference on one line: Authors (year). Title. Journal volume(issue), pages. doi:… |
+| `doi_url` | the DOI as a link |
+| `cited_by_count`, `top_10_percent`, `top_1_percent` | as in `works` (§4) |
+| `work_id` | OpenAlex work ID |
+
+**Sheet `summary`**: the one-person indicators, for every person of the list.
+
+| Column | Meaning |
+|---|---|
+| `person_id`, `last_name`, `first_name`, `lab`, `match_status` | as in `people.csv` |
+| `signed` | publications signed with the institution (the rows of the person's sheet) |
+| `research` | those that are research outputs (see §6) |
+| `first_year`, `last_year` | |
+| `signed_elsewhere` | the person's works not signed with the institution. Many of them can mean a wrong profile match, or a person who arrived recently. |
+| `coverage`, `top10`, `share_top10`, `top1`, `share_top1` | as in `top_cited` (§6), over `research` |
+| `in_ranked_journal` | research outputs in a ranked journal (§5) |
+| `world_top10_2yr_mean_citedness_works`, `world_top10_2yr_mean_citedness_share` | of those, the number and share in a journal of the world top 10% of its subfield |
+| `top10_2yr_mean_citedness_works`, `top10_2yr_mean_citedness_share` | the same, for the top 10% of the journals used in list 1 |
+| `2020`, `2021`, … | publications per year |

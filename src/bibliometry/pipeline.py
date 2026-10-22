@@ -238,10 +238,11 @@ def lists_step(
     """The two publication lists with every OpenAlex field, the venues, the indicators.
 
     Writes ``data/lists/`` (``list1_institution``, ``list2_roster``, ``venues``, as
-    parquet and xlsx) and ``data/lists/indicators.xlsx``. Needs :func:`tables_step`.
+    parquet and xlsx), ``data/lists/indicators.xlsx`` and
+    ``data/lists/publications_by_person.xlsx``. Needs :func:`tables_step`.
     Pass ``client=None`` to use cached venue records only.
     """
-    from . import analysis, lists, venues
+    from . import analysis, lists, people_output, venues
 
     works = pd.read_parquet(config.tables_dir / "works.parquet")
     # Single-person mode: the "institution" download is restricted to the person's
@@ -284,6 +285,9 @@ def lists_step(
         authorships,
         {"list2_roster": "in_list_roster"} if config.single_person else None,
     )
+    people = load_consolidated(config)
+    by_person = people_output.publications_by_person(works, people, authorships)
+    summary = people_output.person_summary(works, people, by_person, venue_table)
 
     out = lists_dir(config)
     lists.write_lists(publication_lists, out)
@@ -296,10 +300,21 @@ def lists_step(
         for name in ("top1_papers_list1", "top1_papers_list2"):
             if name in report:
                 excel_safe(report[name]).to_excel(writer, sheet_name=name, index=False)
+    people_output.write_workbook(by_person, summary, out)
     for name, frame in publication_lists.items():
         progress(f"{name}: {len(frame):,} works, {frame.shape[1]} columns")
+    progress(
+        f"publications_by_person: {len(by_person):,} (person, publication) pairs "
+        f"for {by_person.person_id.nunique()} people"
+    )
     progress(f"{venue_table.attrs['n_ranked']} journals ranked; written to {out}")
-    return {**publication_lists, "venues": venue_table, **report}
+    return {
+        **publication_lists,
+        "venues": venue_table,
+        **report,
+        "publications_by_person": by_person,
+        "person_summary": summary,
+    }
 
 
 def person_config(

@@ -13,6 +13,7 @@ You get back:
 
 - every publication of the institution in the period;
 - every publication of the listed people in the period, flagged according to whether they signed it as members of the institution;
+- for each person, the list of their publications signed with the institution (short references with DOI, per year) and their indicators;
 - an Excel workbook;
 - tables ready for analysis.
 
@@ -43,6 +44,7 @@ Click the badge to open `notebooks/colab_bibliometry.ipynb`. This single noteboo
 - matching people to OpenAlex profiles, with your verdicts;
 - the people's publications;
 - the two publication lists, the most-cited shares and the venue flags;
+- the publications of each person, one sheet per person;
 - tables, the Excel workbook and a first analysis.
 
 Run its cells from top to bottom. It asks for permission to use your Google Drive, and keeps every file in **`My Drive/bibliometry`**: settings, downloads, your verdicts and results. You can close it and come back later; each step resumes where it stopped.
@@ -61,7 +63,8 @@ To use your own list of people, either:
 
 - the person's publications signed with the institution, with every OpenAlex field;
 - their top 10% / 1% most-cited shares and the top-1% papers;
-- the journals used, with their world rank in their subfield.
+- the journals used, with their world rank in their subfield;
+- the same short-reference list as the roster notebook (`publications_by_person.xlsx`).
 
 Each person gets their own folder (`My Drive/bibliometry/people/<name>/`). Only the publications OpenAlex attributes to that person under that institution are downloaded, so it stays fast even for a large university. Locally, set `roster.person` (and optionally `roster.person_orcid`) in `config.yaml` instead of `roster.path`.
 
@@ -84,7 +87,7 @@ Then run the notebooks in order. They save their settings and results in the pro
 | `01_roster_matching` | Downloads the institution's publications, then matches each person to their OpenAlex profile(s). You confirm the uncertain matches. | 2–5 min |
 | `02_harvest_people` | Downloads the people's publications, then builds the tables and the Excel workbook. | 1–2 min |
 | `03_starter_analysis` | Shows output per year and per lab, publication types, open access, venues, citations, collaborations and topics. | 1 min |
-| `04_lists_and_indicators` | Builds the two publication lists with all OpenAlex fields, the top 10% / 1% most-cited shares, and venue classification with top-10% flags. | 1 min |
+| `04_lists_and_indicators` | Builds the two publication lists with all OpenAlex fields, the publications of each person (one sheet per person, with a summary), the top 10% / 1% most-cited shares, and venue classification with top-10% flags. | 1 min |
 
 You can re-run any notebook. Downloads resume where they stopped and skip what is already complete, and the verdicts you have already entered are kept.
 
@@ -153,6 +156,10 @@ By default, the analysis keeps signed research publications and merges the dupli
 | **1 — institution** | every publication of the period with at least one author signing with the institution |
 | **2 — people of the list** | publications where a listed person signed **as a member of the institution**. This is a subset of list 1: what people publish under another affiliation only is not counted. |
 
+**To count the output of your people, use list 2, not list 1.** In a joint lab, staff of a partner university also sign with the institution (their affiliation names both), so list 1 holds their papers too and can be several times larger than list 2.
+
+**Per person.** `publications_by_person.xlsx` splits list 2 by person: one sheet per person with a short reference for each publication (authors, title, journal, volume, issue, pages, DOI, type), plus a `summary` sheet with the counts per year and the indicators of the one-person notebook for everyone. All types are kept (articles, proceedings, preprints, books, chapters, theses…); a paper and its preprint or HAL copy are listed once. A paper co-signed by two listed people appears under both.
+
 Both are written with **every OpenAlex field**: nested fields become dotted columns (`primary_location.source.display_name`, …), lists are kept as JSON text, and the abstract is given as plain text. Notebook 04, the Colab notebook, or `bibliometry lists` then compute:
 
 - **Top 10% / 1% most cited.** The number and share of publications in the world's top 10% and top 1%, per year and in total, using OpenAlex's `citation_normalized_percentile` (same field, year and type). The share is taken over publications that have a percentile, and the coverage is reported. Each figure is given for all works and for research outputs, deduplicated.
@@ -175,7 +182,8 @@ data/
   tables/         works, authorships, people, topics, keywords, funders, awards,
                   sdgs, references, counts_by_year  (parquet)
   lists/          list1_institution, list2_roster (all OpenAlex fields), venues
-                  (.xlsx and .parquet), indicators.xlsx
+                  (.xlsx and .parquet), indicators.xlsx,
+                  publications_by_person.xlsx (one sheet per person + summary)
   exports/        <institution>_<years>_publications.xlsx
 ```
 
@@ -209,6 +217,7 @@ The package code is in `src/bibliometry/`:
 | `tables.py` | flattening to parquet, Excel export |
 | `analysis.py` | scope, deduplication, indicators (incl. top 10%/1%), plots |
 | `lists.py` | the two publication lists with all OpenAlex fields |
+| `people_output.py` | per-person short references and indicators |
 | `venues.py` | venue records, main subfield, world reference, top-10% flags |
 | `pipeline.py` | the steps used by both the notebooks and the CLI |
 | `cli.py` | the CLI |

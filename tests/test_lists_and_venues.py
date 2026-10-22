@@ -188,6 +188,17 @@ def test_every_output_column_is_documented(built):
     venues = V.ordered(V.world_percentiles(V.flag_top(V.venue_table([source], works)), world))
     lists = build_lists(config, works)["list1_institution"]
     from bibliometry.lists import FLAG_COLUMNS
+    from bibliometry.people_output import PUBLICATION_COLUMNS, person_indicators
+
+    people = pd.DataFrame(
+        {
+            "person_id": ["souza--ana"],
+            "last_name": ["SOUZA"],
+            "first_name": ["Ana"],
+            "lab": ["WAVES"],
+            "match_status": ["matched"],
+        }
+    )
 
     columns = {
         *tables["works"].columns,
@@ -200,6 +211,8 @@ def test_every_output_column_is_documented(built):
         *tables["references"].columns,
         *venues.columns,
         *FLAG_COLUMNS,
+        *PUBLICATION_COLUMNS,
+        *person_indicators(works, people, venues).columns,
     }
     assert lists.columns[0] == "work_id"
     missing = sorted(c for c in columns if f"`{c}`" not in doc and c not in doc)

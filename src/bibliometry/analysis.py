@@ -461,28 +461,29 @@ def indicator_report(
     return out
 
 
-def top_papers(
-    works: pd.DataFrame,
+def author_lists(
     authorships: pd.DataFrame,
-    flag: str = "top_1_percent",
+    work_ids: Iterable[str],
     max_authors: int = 20,
-) -> pd.DataFrame:
-    """The works carrying ``flag`` (default: world top 1% most cited), with their authors.
+    marks: bool = True,
+) -> pd.Series:
+    """The author list of each work, in order, as one string indexed by ``work_id``.
 
-    Authors are listed in order; those signing with the institution are marked ``*``
-    and the people of the list are followed by their person id in brackets. Lists
-    longer than ``max_authors`` are cut with "et al. (n authors)".
+    With ``marks``, authors signing with the institution get ``*`` and the people of
+    the list are followed by their person id in brackets. Lists longer than
+    ``max_authors`` are cut with "et al. (n authors)".
     """
-    selected = works[works[flag].fillna(False).astype(bool)]
-    rows = authorships[authorships.work_id.isin(selected.work_id)].drop_duplicates(
+    rows = authorships[authorships.work_id.isin(set(work_ids))].drop_duplicates(
         ["work_id", "author_position_index"]
     )
+    if rows.empty:
+        return pd.Series(dtype=str, name="authors")
 
     def label(row: pd.Series) -> str:
         name = row.author_name or row.raw_author_name or "?"
-        if row.institution_signal:
+        if marks and row.institution_signal:
             name += "*"
-        if row.person_id:
+        if marks and row.person_id:
             name += f" [{row.person_id}]"
         return name
 
@@ -492,7 +493,21 @@ def top_papers(
             return "; ".join(names[:max_authors]) + f"; et al. ({len(names)} authors)"
         return "; ".join(names)
 
-    authors = rows.groupby("work_id").apply(join, include_groups=False).rename("authors")
+    return rows.groupby("work_id").apply(join, include_groups=False).rename("authors")
+
+
+def top_papers(
+    works: pd.DataFrame,
+    authorships: pd.DataFrame,
+    flag: str = "top_1_percent",
+    max_authors: int = 20,
+) -> pd.DataFrame:
+    """The works carrying ``flag`` (default: world top 1% most cited), with their authors.
+
+    Authors are marked as in :func:`author_lists`.
+    """
+    selected = works[works[flag].fillna(False).astype(bool)]
+    authors = author_lists(authorships, selected.work_id, max_authors)
     columns = [
         "work_id",
         "publication_year",
